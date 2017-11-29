@@ -377,18 +377,13 @@ namespace Yangsi
             command.CommandText = queryString;
             command.CommandType = CommandType.Text;
             command.Parameters.AddWithValue("@tableName", table);
-            SqlDataReader reader = command.ExecuteReader();
             List<string> str = new List<string>();
-            try
+            using(SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read())
                 {
                     str.Add(reader[0].ToString());
                 }
-            }
-            finally
-            {
-                reader.Close();
             }
             return str;
         }
@@ -473,8 +468,7 @@ namespace Yangsi
             command.CommandType = CommandType.Text;
             command.Parameters.AddWithValue("@tableName", table);
             Dictionary<string, Type> dic = new Dictionary<string,Type>();
-            SqlDataReader reader = command.ExecuteReader();
-            try
+            using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read())
                 {
@@ -482,11 +476,7 @@ namespace Yangsi
                     dic.Add(reader[0].ToString(), reader[1].GetType());
                 }
             }
-            finally
-            {
-                reader.Close();
-            }
-            return dic;
+             return dic;
         }
 
         /// <summary>
