@@ -274,28 +274,30 @@ namespace Yangsi
         }
         #endregion
 
-        #region 辅助方法
 
+        #region DB及Table相关操作
         /// <summary>
         /// <para>创建数据库连接字符串</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// </summary>
-        /// <param name="address">数据库服务器地址
-        /// <para>.或localhost：本地</para>
-        /// </param>
         /// <param name="databaseName">数据库名</param>
         /// <param name="id">用户名</param>
         /// <param name="pwd">密码</param>
-        /// <returns></returns>
-        public virtual void BuildConnectionString(string databaseName, string id, string pwd,string address=".")
+        /// <param name="address">数据库服务器地址
+        /// <para>.或localhost：本地</para>
+        /// </param>
+        /// <returns>void</returns>
+        public virtual void BuildConnectionString(string databaseName, string id = "", string pwd = "", string address = ".")
         {
+            //Address不能为空字符串
             if (address == null || address.Length < 1)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "Address");
             if (databaseName == null || databaseName.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty", "DatabaseName");
             if (id == null || pwd == null)
                 throw new System.ArgumentException("Parameters cannot be null", "Id or Password");
+            //用于获得表时
             this.databaseName = databaseName;
             SqlConnectionStringBuilder sBuilder = new SqlConnectionStringBuilder();
             sBuilder.DataSource = address;
@@ -333,6 +335,7 @@ namespace Yangsi
         /// <summary>
         /// 获得数据库中所有的表
         /// </summary>
+        /// <returns>表名列表</returns>
         public List<string> GetAllTables()
         {
             CheckDatabaseConnection();
@@ -343,18 +346,13 @@ namespace Yangsi
             command.CommandText = queryString;
             command.CommandType = CommandType.Text;
             command.Parameters.AddWithValue("@dbName", this.databaseName);
-            SqlDataReader reader = command.ExecuteReader();
             List<string> str = new List<string>();
-            try
+            using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read())
                 {
                     str.Add(reader[0].ToString());
                 }
-            }
-            finally
-            {
-                reader.Close();
             }
             return str;
         }
@@ -365,12 +363,11 @@ namespace Yangsi
         /// <para>System.ArgumentOutOfRangeException</para>
         /// </summary>
         /// <param name="table">表名</param>
-        /// <returns></returns>
+        /// <returns>列名列表</returns>
         public virtual List<string> GetColumnsInTable(string table)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
-            CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             string queryString = "SELECT COLUMN_NAME 'All_Columns' FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName ;";
@@ -403,12 +400,11 @@ namespace Yangsi
         /// <para>System.ArgumentOutOfRangeException</para>
         /// </summary>
         /// <param name="table">表名</param>
-        /// <returns></returns>
+        /// <returns>行数</returns>
         public virtual ulong GetRowCountInTable(string table)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
-            CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             string queryString = "SELECT COUNT(*) FROM @tableName ;";
@@ -421,15 +417,53 @@ namespace Yangsi
         }
 
         /// <summary>
+        /// 获得表中某一列的数据类型
+        /// </summary>
+        /// <param name="table">表名</param>
+        /// <param name="column">列名</param>
+        /// <returns>数据类型</returns>
+        public virtual Type GetTypeOfColumn(string table, string column)
+        {
+            if (table == null || table.Length <= 0)
+                throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
+            if (column == null || column.Length <= 0)
+                throw new System.ArgumentException("Parameter cannot be null or empty.", "column");
+            Dictionary<string, Type> dic = this.GetColumnsAndTypeInTable(table);
+            if (dic.ContainsKey(column))
+                return dic[column];
+            return null;
+        }
+
+        /// <summary>
+        /// 获得表中某一数据类型的列名
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="table">表名</param>
+        /// <returns>列名</returns>
+        public virtual string GetColumnNameOfType<T>(string table)
+        {
+            if (table == null || table.Length <= 0)
+                throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
+            Dictionary<string, Type> dic = this.GetColumnsAndTypeInTable(table);
+            var dateCoumns =
+                from entry in dic
+                where (entry.Value == typeof(T))
+                select entry.Key;
+            if (dateCoumns.Count() <= 0)
+                throw new System.ArgumentException("There is no DateTime Column In table.", "table");
+            //表中可能有多个符合条件列，默认取第一个列
+            return dateCoumns.ElementAt(0);
+        }
+
+        /// <summary>
         /// 获得表中所有列及其数据类型
         /// </summary>
         /// <param name="table">表名</param>
-        /// <returns></returns>
+        /// <returns>字典</returns>
         public virtual Dictionary<string,Type> GetColumnsAndTypeInTable(string table)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
-            CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             string queryString = "SELECT name AS column_name,TYPE_NAME(system_type_id) AS column_type, max_length,is_nullable FROM sys.columns WHERE object_id = OBJECT_ID(@tableName)";
@@ -444,6 +478,7 @@ namespace Yangsi
             {
                 while (reader.Read())
                 {
+                    //需转换为string、DateTime、int等类型
                     dic.Add(reader[0].ToString(), reader[1].GetType());
                 }
             }
@@ -456,6 +491,8 @@ namespace Yangsi
 
         /// <summary>
         /// 获得表中数据的时间区间
+        /// <para>如果没有时间列，抛出异常</para>
+        /// <para>如果有，返回值为该列名</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
@@ -463,11 +500,11 @@ namespace Yangsi
         /// <param name="table">表名</param>
         /// <param name="start">起始时间</param>
         /// <param name="end">结束时间</param>
-        public virtual void GetTimeSpanInTable(string table, out DateTime start, out DateTime end)
+        /// <returns>列名</returns>
+        public virtual string GetTimeSpanInTable(string table, out DateTime start, out DateTime end)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
-            CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             //第一步 查询表中是否存在DateTime列
@@ -477,8 +514,8 @@ namespace Yangsi
                 where (entry.Value ==typeof(DateTime))
                 select entry.Key;
             if (dateCoumns.Count() <= 0)
-                throw new System.ArgumentException("There is no DateTime Column", "table");
-            //表中可能有多个DateTime列，取第一个列
+                throw new System.ArgumentException("There is no DateTime Column In table.", "table");
+            //表中可能有多个DateTime列，默认取第一个列
             string dateCoumnName = dateCoumns.ElementAt(0);
             //第二步 取最早和最晚的时间
             SqlCommand command = new SqlCommand();
@@ -494,7 +531,7 @@ namespace Yangsi
             command.Parameters.AddWithValue("@tableName", table);
             command.Parameters.AddWithValue("@columnName", dateCoumnName);
             end = Convert.ToDateTime(command.ExecuteScalar());
-            return;
+            return dateCoumnName;
         }
 
         /// <summary>
@@ -508,7 +545,7 @@ namespace Yangsi
         /// <para>list[1] = DateTime.Now; </para>
         /// <para>list[2] = "cost"; </para>               
         /// <para>list[3] = 5.0;</para>
-        /// <para>db.CreateTable("Smith", list);</para>
+        /// <para>db.CreateTable("Jim", list);</para>
         /// </code>
         /// </example>
         /// </para>
@@ -517,16 +554,15 @@ namespace Yangsi
         /// </summary>
         /// <param name="table">表名</param>
         /// <param name="list">参数列表</param>
-        /// <returns></returns>
+        /// <returns>布尔</returns>
         public virtual bool CreateTable(string table, params object[] list)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (list == null || list.Length <= 0 || list.Length % 2 != 0)
-                throw new System.ArgumentException("insuffient table column names.", "list");
-            CheckDatabaseConnection();
+                throw new System.ArgumentException("Insuffient table column information.", "list");
             if (this.GetAllTables().Contains(table))
-                throw new System.ArgumentOutOfRangeException("table","name is already Exist.");
+                throw new System.ArgumentOutOfRangeException("table", table + "name is already Exist.");
             StringBuilder sBuilder = new StringBuilder("CREATE TABLE ");
             sBuilder.Append(table);
             sBuilder.Append("(");
@@ -558,14 +594,18 @@ namespace Yangsi
             return true;
         }
 
+        #endregion
+
+        #region 辅助方法
         /// <summary>
         /// 将DataTable转换为IList
+        /// <para>可用于返回某一列的数据</para>
         /// </summary>
         /// <typeparam name="T">泛型，用于指定IList的数据类型</typeparam>
         /// <param name="table">数据表</param>
         /// <param name="name">要转换的数据名</param>
         /// <returns>IList或者null</returns>
-        private IList<T> DataTableToList<T>(DataTable table, string name)
+        public virtual IList<T> DataTableToList<T>(DataTable table, string name)
         {
             if (table == null || table.Columns.Count <= 0 || name == null || name.Length < 0)
                 return null;
@@ -577,51 +617,121 @@ namespace Yangsi
                 return null;
             return list.OfType<T>().ToList();
         }
+
+        /// <summary>
+        /// 将一维数据转换为DataTable
+        /// <para>Exception:</para>
+        /// <para>System.NotSupportedException</para>
+        /// </summary>
+        /// <param name="names">列名</param>
+        /// <param name="values">数组</param>
+        /// <returns>DataTable</returns>
+        public virtual DataTable ToDataTable(string[] names, params object[] values)
+        {
+            if (names.Length != values.Length)
+                throw new System.NotSupportedException("Lengths of columns and values are not equal.");
+            DataTable table = new DataTable();
+            DataRow row = table.NewRow();
+            for (int i = 0; i < names.Length; i++)
+            {
+                table.Columns.Add(names[i], values[i].GetType());
+            }
+            for (int j = 0; j < values.Length; j++)
+            {
+                row[names[j]] = values[j];
+            }
+            table.Rows.Add(row);
+            return table;
+        }
+
+        /// <summary>
+        /// 将一维数据转换为DataRow
+        /// <para>Exception:</para>
+        /// <para>System.NotSupportedException</para>
+        /// </summary>
+        /// <param name="names">列名</param>
+        /// <param name="values">数组</param>
+        /// <returns>DataRow</returns>
+        public virtual DataRow ToDataRow(string[] names, params object[] values)
+        {
+            if (names.Length != values.Length)
+                throw new System.NotSupportedException("Lengths of columns and values are not equal.");
+            DataTable table = new DataTable();
+            DataRow row = table.NewRow();
+            for (int i = 0; i < names.Length; i++)
+            {
+                table.Columns.Add(names[i], values[i].GetType());
+            }
+            for (int j = 0; j < values.Length; j++)
+            {
+                row[names[j]] = values[j];
+            }
+            table.Rows.Add(row);
+            return table.Rows[0];
+        }
         #endregion
 
         #region 删除数据
         /// <summary>
-        /// 删除表中数据
+        /// 删除表中若干行数据
         /// <para>可以清空或删除表</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
         /// </summary>
         /// <param name="table"></param>
-        /// <param name="column">删除的列名
-        /// <para>默认值为空，表示所有列</para>
-        /// </param>
-        /// <param name="index">起始位置
-        /// <para>0：从头开始</para>
-        /// <para>-1：从尾开始</para>
+        /// <param name="count">删除数量
+        /// <para>0：清空表</para>
+        /// <para>-1: 删除表</para>
+        /// <para>大于0：数量</para>
         /// <para>默认值：0</para>
         /// </param>
-        /// <param name="count">删除数量
-        /// <para>-1：清空</para>
-        /// <para>-2：删除</para>
-        /// <para>默认值：-1</para>
+        /// <param name="column">排序列名
+        /// <para>推荐为时间列名</para></param>
+        /// <param name="direction">排序类型
+        /// <para>0：desc</para>
+        /// <para>1：asc</para>
+        /// <para>默认值：0</para>
         /// </param>
-        /// <returns></returns>
-        public virtual uint RemoveFromTable(string table, string column = "", int index = 0, int count = -1)
+        /// <returns>删除的行数</returns>
+        public virtual int RemoveFromTable(string table, int count = 0, string column = "", int direction = 0)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            if(count == -1)
+            SqlCommand command = new SqlCommand();
+            command.Connection = sqlCon;
+            string sqlCommand;
+            if (count == 0)
             {
-
+                sqlCommand = "DELETE * FROM TABLE @table";
+                command.CommandText = sqlCommand;
+                command.Parameters.AddWithValue("@table", table);
             }
-            else if(count ==-2)
+            else if(count == -1)
             {
-
+                sqlCommand = "DELETE TABLE @table";
+                command.CommandText = sqlCommand;
+                command.Parameters.AddWithValue("@table", table);
             }
-            else 
+            else if (count > 0 && column != null && column.Length > 0)
             {
-
+                sqlCommand = "DELETE FROM @table WHERE @column IN(select top @count @column from @table order by @column @direction)";
+                command.CommandText = sqlCommand;
+                command.Parameters.AddWithValue("@table", table);
+                command.Parameters.AddWithValue("@count", count);
+                command.Parameters.AddWithValue("@column", column);
+                command.Parameters.AddWithValue("@direction", direction > 0 ? "asc" : "desc");
             }
-            return 1;
+            else
+            {
+                throw new System.ArgumentException("Parameter can not be null or empty.", "column");
+            }
+            Console.WriteLine(command.CommandText);
+            Console.WriteLine(command.Parameters["@direction"].Value);
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -631,11 +741,9 @@ namespace Yangsi
         /// <para>System.ArgumentOutOfRangeException</para>
         /// </summary>
         /// <param name="table">表名</param>
-        /// <param name="column">删除的列名
-        /// <para>如需删除多列，以英文逗号分割即可</para>
-        /// </param>
         /// <param name="criteraColumn">筛选列名
         /// <para>如需筛选多列，以英文逗号分割即可</para>
+        /// <para>空表示清空表</para>
         /// </param>
         /// <param name="way">筛选条件，包括
         /// <para>Contain</para>
@@ -645,15 +753,56 @@ namespace Yangsi
         /// <para>None</para>
         /// </param>
         /// <param name="critera">筛选元素</param>
-        /// <returns></returns>
-        public virtual uint RemoveFromTable(string table, string column, string criteraColumn = "", TxtSelectCriteria way = TxtSelectCriteria.None, string critera = "")
+        /// <returns>删除的行数</returns>
+        public virtual int RemoveFromTable(string table, string criteraColumn = "", TxtSelectCriteria way = TxtSelectCriteria.None, string critera = "")
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            return 1;
+            if (criteraColumn == null || criteraColumn.Length <= 0 || way== TxtSelectCriteria.None)
+            {
+                return this.RemoveFromTable(table,0);
+            }
+            StringBuilder strBuilder = new StringBuilder();
+            strBuilder.Append("Delete From @table");
+            List<string> wheres = new List<string>();
+            List<SqlParameter> listParameter = new List<SqlParameter>();
+            listParameter.Add(new SqlParameter("@table", table));
+            switch(way)
+            {
+                case TxtSelectCriteria.Contain:
+                    wheres.Add("@criteriaColumn LIKE %@word%");
+                    break;
+                case TxtSelectCriteria.EndWith:
+                    wheres.Add("@criteriaColumn LIKE @word%");
+                    break;
+                case TxtSelectCriteria.NoContain:
+                    wheres.Add("@criteriaColumn NOT LIKE %@word%");
+                    break;
+                case TxtSelectCriteria.StartWith:
+                default:
+                    wheres.Add("@criteriaColumn LIKE %@word");
+                    break;
+            }
+            listParameter.Add(new SqlParameter("@criteriaColumn", criteraColumn));
+            listParameter.Add(new SqlParameter("@word", critera));
+            if (wheres.Count > 0)
+            {
+                string wh = string.Join(" and ", wheres.ToArray());
+                strBuilder.Append(" where " + wh);
+            }
+            SqlCommand command = new SqlCommand();
+            command.Connection = sqlCon;
+            command.CommandText = "@cmd";
+            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
+            command.Parameters.AddRange(listParameter.ToArray());
+            Console.WriteLine(command.Parameters["@cmd"].Value);
+            Console.WriteLine(command.Parameters["@word"].Value);
+            Console.WriteLine(command.Parameters["@criteriaColumn"].Value);
+            Console.WriteLine(command.Parameters["@table"].Value);
+            return command.ExecuteNonQuery();
         }
         /// <summary>
         /// 删除表中符合数字筛选条件的数据
@@ -662,11 +811,9 @@ namespace Yangsi
         /// <para>System.ArgumentOutOfRangeException</para>
         /// </summary>
         /// <param name="table">表名</param>
-        /// <param name="column">删除的列名
-        /// <para>如需删除多列，以英文逗号分割即可</para>
-        /// </param>
         /// <param name="criteraColumn">筛选列名
         /// <para>如需筛选多列，以英文逗号分割即可</para>
+        /// <para>空表示清空表</para>
         /// </param>
         /// <param name="way">筛选条件，包括
         /// <para>Less Than</para>
@@ -678,21 +825,74 @@ namespace Yangsi
         /// </param>
         /// <param name="critera1">门限值</param>
         /// <param name="critera2">门限值</param>
-        /// <returns></returns>
-        protected virtual uint RemoveFromTable<T>(string table, string column, string criteraColumn = "", NumericSelectCriteria way = NumericSelectCriteria.None, T critera1 = default(T), T critera2 = default(T))
+        /// <returns>删除的行数</returns>
+        public virtual int RemoveFromTable<T>(string table, string criteraColumn = "", 
+            NumericSelectCriteria way = NumericSelectCriteria.None, T critera1 = default(T), T critera2 = default(T))
+            where T:struct,IComparable
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            return 1;
+            if (criteraColumn == null || criteraColumn.Length <= 0 || way == NumericSelectCriteria.None)
+            {
+                //清空表
+                return this.RemoveFromTable(table, 0);
+            }
+            StringBuilder strBuilder = new StringBuilder();
+            strBuilder.Append("Delete From @table");
+            List<string> wheres = new List<string>();
+            List<SqlParameter> listParameter = new List<SqlParameter>();
+            listParameter.Add(new SqlParameter("@table", table));
+            switch (way)
+            {
+                case NumericSelectCriteria.Between:
+                    wheres.Add("@criteriaColumn BETWEEN @gate1 AND @gate2");
+                    listParameter.Add(new SqlParameter("@gate1", critera1));
+                    listParameter.Add(new SqlParameter("@gate2", critera2));
+                    break;
+                case NumericSelectCriteria.GreaterThan:
+                    wheres.Add("@criteriaColumn > @gate1");
+                    listParameter.Add(new SqlParameter("@gate1", critera1));
+                    break;
+                case NumericSelectCriteria.GreaterThanOrEqual:
+                    wheres.Add("@criteriaColumn >= @gate1");
+                    listParameter.Add(new SqlParameter("@gate1", critera1));
+                    break;
+                case NumericSelectCriteria.LessThanOrEqual:
+                    wheres.Add("@criteriaColumn LIKE <= @gate1");
+                    listParameter.Add(new SqlParameter("@gate1", critera1));
+                    break;
+                case NumericSelectCriteria.LessThan:
+                default:
+                    wheres.Add("@criteriaColumn LIKE < @gate1");
+                    listParameter.Add(new SqlParameter("@gate1", critera1));
+                    break;
+            }
+            listParameter.Add(new SqlParameter("@criteriaColumn", criteraColumn));
+            if (wheres.Count > 0)
+            {
+                string wh = string.Join(" and ", wheres.ToArray());
+                strBuilder.Append(" where " + wh);
+            }
+            SqlCommand command = new SqlCommand();
+            command.Connection = sqlCon;
+            command.CommandText = "@cmd";
+            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
+            command.Parameters.AddRange(listParameter.ToArray());
+            Console.WriteLine(command.Parameters["@cmd"].Value);
+            Console.WriteLine(command.Parameters["@gate1"].Value);
+            Console.WriteLine(command.Parameters["@criteriaColumn"].Value);
+            Console.WriteLine(command.Parameters["@table"].Value);
+            return command.ExecuteNonQuery();
         }
         #endregion
 
         #region 添加数据
         /// <summary>
         ///  在表中添加新数据
+        ///  <para>用于一次添加一个数据</para>
         ///  <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
@@ -700,7 +900,7 @@ namespace Yangsi
         /// <param name="table">表名</param>
         /// <param name="column">数据所在的列名</param>
         /// <param name="value">数值</param>
-        /// <returns></returns>
+        /// <returns>添加的行数</returns>
         public virtual int InsertToTable(string table, string column, object value)
         {
             if (table == null || table.Length <= 0)
@@ -711,57 +911,73 @@ namespace Yangsi
             if(value == null)
                 throw new System.ArgumentException("Parameter can not be null.", "value");
             ulong count = this.GetRowCountInTable(table);
-            if (count >= MaxTableRowSize)
+            if (MaxTableRowSize != 0 && count >= MaxTableRowSize)
                 throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
-            return 1;
+            string strCmd = "INSERT INTO @table (@column) values(@value)";
+            SqlCommand command = new SqlCommand();
+            command.Connection = sqlCon;
+            command.CommandText = "@cmd";
+            command.Parameters.AddWithValue("@cmd", strCmd);
+            command.Parameters.AddWithValue("@column", column);
+            command.Parameters.AddWithValue("@value", value);
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
         /// 在表中添加新数据
+        /// <para>用于一次添加一行数据</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
+        /// <para>System.NotSupportedException</para>
         /// </summary>
-        /// <typeparam name="T">必须是结构体</typeparam>
         /// <param name="table">表名</param>
-        /// <param name="column">数据所在的列名</param>
-        /// <param name="values">数据，List</param>
-        /// <param name="insertAsCan">是否插入
-        /// <para>在表未达到最大行但仍不足插入所有values时，
-        /// 此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
+        /// <param name="columns">数据所在的列名
+        /// <para>多个列名以,分隔</para>
         /// </param>
-        /// <returns></returns>
-        public virtual int InsertToTable<T>(string table, string column, List<T> values, bool insertAsCan) where T : struct
+        /// <param name="values">数据</param>
+        /// <returns>添加的行数</returns>
+        public virtual int InsertToTable(string table, string columns, params object[] values)
         {
-            if (values == null || values.Count <= 0)
-                throw new System.ArgumentException("Parameter can not be null or empty.", "values");
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
-            CheckDatabaseConnection();
-            if (!this.GetAllTables().Contains(table))
-                throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            ulong count = this.GetRowCountInTable(table);
-            ulong spaceLeft = MaxTableRowSize - count;
-            if (spaceLeft <= 0)
-                throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
-            if (spaceLeft < (ulong)values.Count)
+            if (columns == null || columns.Length <= 0)
+                throw new System.ArgumentException("Parameter can not be null or empty.", "columns");
+            if (values == null || values.Length <= 0)
+                throw new System.ArgumentException("Parameter can not be null or empty.", "values");
+            string[] names = columns.Split(',');
+            if (names.Length != values.Length)
+                throw new System.NotSupportedException("Lengths of columns and values are not equal.");
+            StringBuilder strBuilder = new StringBuilder();
+            strBuilder.Append("INSERT INTO @table (@column) values(");
+            List<SqlParameter> listParameters = new List<SqlParameter>();
+            for (int i = 0; i < names.Length; i++)
             {
-                if (insertAsCan)
-                {
-                    //insert here
-                    return (int)spaceLeft;
-                }
-                else
-                {
-                    throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
-                }
+                string temp = "@para" + (i + 1).ToString();
+                strBuilder.Append(temp);
+                strBuilder.Append(",");
+                listParameters.Add(new SqlParameter(temp, values[i]));
             }
-            return values.Count;
+            strBuilder.Remove(strBuilder.Length - 1, 1);
+            strBuilder.Append(")");
+            SqlCommand command = new SqlCommand();
+            command.Connection = sqlCon;
+            command.CommandText = "@cmd";
+            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
+            command.Parameters.AddWithValue("@column", columns);
+            command.Parameters.AddRange(listParameters.ToArray());
+            Console.WriteLine(command.Parameters["@cmd"].Value);
+            //CheckDatabaseConnection();
+            // if (!this.GetAllTables().Contains(table))
+                //throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
+            //return command.ExecuteNonQuery();
+            return 5;
         }
+
 
         /// <summary>
         /// 在表中添加新数据
-        /// <para>可用于一次添加多项数据</para>
+        /// <para>可用于一次添加多行数据</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
@@ -772,20 +988,25 @@ namespace Yangsi
         /// <para>在表未达到最大行但仍不足插入所有values时，
         /// 此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
         /// </param>
-        /// <returns></returns>
-        public virtual int InsertToTable(string table, DataTable datatable, bool insertAsCan)
+        /// <returns>添加的行数</returns>
+        public virtual void InsertToTable(string table, DataTable datatable, bool insertAsCan)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            return 500;
+            SqlBulkCopy bulkCopy = new SqlBulkCopy(sqlCon);
+            bulkCopy.DestinationTableName = table;
+            bulkCopy.WriteToServer(datatable);
+            bulkCopy.Close();
+            bulkCopy = null;
+            return ;
         }
 
         /// <summary>
         /// 在表中添加新数据
-        /// <para>可用于一次添加多项数据</para>
+        /// <para>可用于一次添加多行数据</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// <para>System.ArgumentOutOfRangeException</para>
@@ -796,15 +1017,20 @@ namespace Yangsi
         /// <para>在表未达到最大行但仍不足插入所有values时，
         /// 此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
         /// </param>
-        /// <returns></returns>
-        public virtual int InsertToTable(string table, DataRow[] rows, bool insertAsCan)
+        /// <returns>添加的行数</returns>
+        public virtual void InsertToTable(string table, DataRow[] rows, bool insertAsCan)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            return 500;
+            SqlBulkCopy bulkCopy = new SqlBulkCopy(sqlCon);
+            bulkCopy.DestinationTableName = table;
+            bulkCopy.WriteToServer(rows);
+            bulkCopy.Close();
+            bulkCopy = null;
+            return ;
         }
         #endregion
 
@@ -1075,7 +1301,7 @@ namespace Yangsi
         /// <param name="criteriaColumn"></param>
         /// <param name="type"></param>
         /// <param name="keyWord"></param>
-        /// <returns></returns>
+        /// <returns>IList</returns>
         public virtual IList<string> GetData(string column, string criteriaColumn = "", TxtSelectCriteria type = TxtSelectCriteria.None, string keyWord = "")
         {
             if (column == null || column.Length <= 0)
@@ -1139,7 +1365,7 @@ namespace Yangsi
         /// <param name="gate2">门限值
         /// <para>当筛选条件为“在范围内”时，表示上限。其他条件时请忽略</para>
         /// </param>
-        /// <returns></returns>
+        /// <returns>IList</returns>
         public virtual IList<string> GetData<T>(string column,
             string criteriaColumn = "", NumericSelectCriteria type = NumericSelectCriteria.None,
             T gate1 = default(T), T gate2 = default(T))
