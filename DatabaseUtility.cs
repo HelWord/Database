@@ -402,12 +402,10 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            string queryString = "SELECT COUNT(*) FROM @tableName ;";
+            string queryString = "SELECT COUNT(*) FROM " + table + ";";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             command.CommandText = queryString;
-            command.CommandType = CommandType.Text;
-            command.Parameters.AddWithValue("@tableName", table);
             return Convert.ToUInt64(command.ExecuteScalar());
         }
 
@@ -510,15 +508,13 @@ namespace Yangsi
             //第二步 取最早和最晚的时间
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            string queryString = "select top 1 @columnName from @tableName order by @columnName";
+            string queryString = "select top 1 " + dateCoumnName + " from" + table + "order by @columnName";
             command.CommandText = queryString;
-            command.Parameters.AddWithValue("@tableName", table);
             command.Parameters.AddWithValue("@columnName", dateCoumnName);
             start = Convert.ToDateTime(command.ExecuteScalar());
 
-            queryString = "select top 1 @columnName from @tableName order by @columnName desc";
+            queryString = "select top 1 " + dateCoumnName + " from" + table + "order by @columnName desc";
             command.CommandText = queryString;
-            command.Parameters.AddWithValue("@tableName", table);
             command.Parameters.AddWithValue("@columnName", dateCoumnName);
             end = Convert.ToDateTime(command.ExecuteScalar());
             return dateCoumnName;
@@ -572,14 +568,11 @@ namespace Yangsi
                 }
             }
             sBuilder.Remove(sBuilder.Length - 1, 1);
-            sBuilder.Append(")");
+            sBuilder.Append(");");
             Console.WriteLine(sBuilder.ToString());
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", sBuilder.ToString());
-            command.CommandType = CommandType.Text;
-            Console.WriteLine(command.Parameters["@cmd"].Value);
+            command.CommandText = sBuilder.ToString();
             command.ExecuteNonQuery();
             return true;
         }
@@ -696,23 +689,21 @@ namespace Yangsi
             string sqlCommand;
             if (count == 0)
             {
-                sqlCommand = "DELETE * FROM TABLE @table";
+                sqlCommand = "DELETE  FROM " + table;
                 command.CommandText = sqlCommand;
-                command.Parameters.AddWithValue("@table", table);
             }
             else if(count == -1)
             {
-                sqlCommand = "DELETE TABLE @table";
+                sqlCommand = "DROP TABLE " + table;
                 command.CommandText = sqlCommand;
                 command.Parameters.AddWithValue("@table", table);
             }
             else if (count > 0 && column != null && column.Length > 0)
             {
-                sqlCommand = "DELETE FROM @table WHERE @column IN(select top @count @column from @table order by @column @direction)";
+                sqlCommand = string.Format("DELETE FROM {0} WHERE {1} IN(select top @count @column from {0} order by {1} @direction)",
+                    table,column);
                 command.CommandText = sqlCommand;
-                command.Parameters.AddWithValue("@table", table);
                 command.Parameters.AddWithValue("@count", count);
-                command.Parameters.AddWithValue("@column", column);
                 command.Parameters.AddWithValue("@direction", direction > 0 ? "asc" : "desc");
             }
             else
@@ -720,6 +711,7 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             }
             Console.WriteLine(command.CommandText);
+            command.Parameters.AddWithValue("@count", count);
             Console.WriteLine(command.Parameters["@direction"].Value);
             return command.ExecuteNonQuery();
         }
@@ -756,27 +748,26 @@ namespace Yangsi
                 return this.RemoveFromTable(table,0);
             }
             StringBuilder strBuilder = new StringBuilder();
-            strBuilder.Append("Delete From @table");
+            strBuilder.Append("Delete From ");
+            strBuilder.Append(table);
             List<string> wheres = new List<string>();
             List<SqlParameter> listParameter = new List<SqlParameter>();
-            listParameter.Add(new SqlParameter("@table", table));
             switch(way)
             {
                 case TxtSelectCriteria.Contain:
-                    wheres.Add("@criteriaColumn LIKE %@word%");
+                    wheres.Add(criteraColumn + " LIKE '%@word%'");
                     break;
                 case TxtSelectCriteria.EndWith:
-                    wheres.Add("@criteriaColumn LIKE @word%");
+                    wheres.Add(criteraColumn + " LIKE '@word%'");
                     break;
                 case TxtSelectCriteria.NoContain:
-                    wheres.Add("@criteriaColumn NOT LIKE %@word%");
+                    wheres.Add(criteraColumn + " NOT LIKE '%@word%'");
                     break;
                 case TxtSelectCriteria.StartWith:
                 default:
-                    wheres.Add("@criteriaColumn LIKE %@word");
+                    wheres.Add(criteraColumn + " LIKE '%@word'");
                     break;
             }
-            listParameter.Add(new SqlParameter("@criteriaColumn", criteraColumn));
             listParameter.Add(new SqlParameter("@word", critera));
             if (wheres.Count > 0)
             {
@@ -785,13 +776,9 @@ namespace Yangsi
             }
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
+            command.CommandText = strBuilder.ToString();
             command.Parameters.AddRange(listParameter.ToArray());
-            Console.WriteLine(command.Parameters["@cmd"].Value);
             Console.WriteLine(command.Parameters["@word"].Value);
-            Console.WriteLine(command.Parameters["@criteriaColumn"].Value);
-            Console.WriteLine(command.Parameters["@table"].Value);
             return command.ExecuteNonQuery();
         }
         /// <summary>
@@ -831,36 +818,35 @@ namespace Yangsi
                 return this.RemoveFromTable(table, 0);
             }
             StringBuilder strBuilder = new StringBuilder();
-            strBuilder.Append("Delete From @table");
+            strBuilder.Append("Delete From ");
+            strBuilder.Append(table);
             List<string> wheres = new List<string>();
             List<SqlParameter> listParameter = new List<SqlParameter>();
-            listParameter.Add(new SqlParameter("@table", table));
             switch (way)
             {
                 case NumericSelectCriteria.Between:
-                    wheres.Add("@criteriaColumn BETWEEN @gate1 AND @gate2");
+                    wheres.Add(criteraColumn + " BETWEEN @gate1 AND @gate2");
                     listParameter.Add(new SqlParameter("@gate1", critera1));
                     listParameter.Add(new SqlParameter("@gate2", critera2));
                     break;
                 case NumericSelectCriteria.GreaterThan:
-                    wheres.Add("@criteriaColumn > @gate1");
+                    wheres.Add(criteraColumn + "  > @gate1");
                     listParameter.Add(new SqlParameter("@gate1", critera1));
                     break;
                 case NumericSelectCriteria.GreaterThanOrEqual:
-                    wheres.Add("@criteriaColumn >= @gate1");
+                    wheres.Add(criteraColumn + "  >= @gate1");
                     listParameter.Add(new SqlParameter("@gate1", critera1));
                     break;
                 case NumericSelectCriteria.LessThanOrEqual:
-                    wheres.Add("@criteriaColumn LIKE <= @gate1");
+                    wheres.Add(criteraColumn + "  <= @gate1");
                     listParameter.Add(new SqlParameter("@gate1", critera1));
                     break;
                 case NumericSelectCriteria.LessThan:
                 default:
-                    wheres.Add("@criteriaColumn LIKE < @gate1");
+                    wheres.Add(criteraColumn + " < @gate1");
                     listParameter.Add(new SqlParameter("@gate1", critera1));
                     break;
             }
-            listParameter.Add(new SqlParameter("@criteriaColumn", criteraColumn));
             if (wheres.Count > 0)
             {
                 string wh = string.Join(" and ", wheres.ToArray());
@@ -868,13 +854,8 @@ namespace Yangsi
             }
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
+            command.CommandText = strBuilder.ToString();
             command.Parameters.AddRange(listParameter.ToArray());
-            Console.WriteLine(command.Parameters["@cmd"].Value);
-            Console.WriteLine(command.Parameters["@gate1"].Value);
-            Console.WriteLine(command.Parameters["@criteriaColumn"].Value);
-            Console.WriteLine(command.Parameters["@table"].Value);
             return command.ExecuteNonQuery();
         }
         #endregion
@@ -889,27 +870,25 @@ namespace Yangsi
         /// </summary>
         /// <param name="table">表名</param>
         /// <param name="column">数据所在的列名</param>
-        /// <param name="value">数值</param>
+        /// <param name="values">数值</param>
         /// <returns>添加的行数</returns>
-        public virtual int InsertToTable(string table, string column, object value)
+        public virtual int InsertToTable(string table, string column, object values)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            if(value == null)
+            if(values == null)
                 throw new System.ArgumentException("Parameter can not be null.", "value");
             ulong count = this.GetRowCountInTable(table);
             if (MaxTableRowSize != 0 && count >= MaxTableRowSize)
                 throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
-            string strCmd = "INSERT INTO @table (@column) values(@value)";
+            string strCmd = "INSERT INTO " + table + "(" + column + ")" + " VALUES (@myvalues);";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", strCmd);
-            command.Parameters.AddWithValue("@column", column);
-            command.Parameters.AddWithValue("@value", value);
+            command.CommandText = strCmd;
+            command.Parameters.Add(new SqlParameter("@myvalues", values));
             return command.ExecuteNonQuery();
         }
 
@@ -939,7 +918,9 @@ namespace Yangsi
             if (names.Length != values.Length)
                 throw new System.NotSupportedException("Lengths of columns and values are not equal.");
             StringBuilder strBuilder = new StringBuilder();
-            strBuilder.Append("INSERT INTO @table (@column) values(");
+            strBuilder.Append("INSERT INTO ");
+            strBuilder.Append(table + " (");
+            strBuilder.Append(columns + ") values(");
             List<SqlParameter> listParameters = new List<SqlParameter>();
             for (int i = 0; i < names.Length; i++)
             {
@@ -952,16 +933,12 @@ namespace Yangsi
             strBuilder.Append(")");
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", strBuilder.ToString());
-            command.Parameters.AddWithValue("@column", columns);
+            command.CommandText = strBuilder.ToString();
             command.Parameters.AddRange(listParameters.ToArray());
-            Console.WriteLine(command.Parameters["@cmd"].Value);
-            //CheckDatabaseConnection();
-            // if (!this.GetAllTables().Contains(table))
-                //throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
-            //return command.ExecuteNonQuery();
-            return 5;
+            CheckDatabaseConnection();
+            if (!this.GetAllTables().Contains(table))
+                throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
+            return command.ExecuteNonQuery();
         }
 
 
@@ -1068,9 +1045,8 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter can not be null or empty.", "selection");
             CheckDatabaseConnection();
             SqlCommand command = new SqlCommand();
-            command.CommandText = "@cmd";
+            command.CommandText = selectionCmd;
             command.Connection = sqlCon;
-            command.Parameters.AddWithValue("@cmd", selectionCmd);
             DataTable t = new DataTable();
             t.BeginLoadData();
             t.Load(command.ExecuteReader());
@@ -1191,40 +1167,36 @@ namespace Yangsi
             CheckDatabaseConnection();
             IList<T> tResult = new List<T>();
             //存储命令的若干变量
-            StringBuilder sql = new StringBuilder("select @columnName from @tableName ");
+            StringBuilder sql = new StringBuilder("select ");
+            sql.Append(column);
+            sql.Append(" from ");
+            sql.Append("");
             List<string> wheres = new List<string>();
             List<SqlParameter> listParameter = new List<SqlParameter>();
-            listParameter.Add(new SqlParameter("@columnName", column));
-            listParameter.Add(new SqlParameter("@tableName", "tb"));
             if (criteriaColumn1 != null && criteriaColumn1.Length > 0 && type1 != NumericSelectCriteria.None)
             {
                 switch(type1)
                 {
                     case NumericSelectCriteria.Between:
-                        wheres.Add("@criteriaColumn1 BETWEEN @gate11 AND @gate12");
-                        listParameter.Add(new SqlParameter("@criteriaColumn1", criteriaColumn1));
+                        wheres.Add(criteriaColumn1 + " BETWEEN @gate11 AND @gate12");
                         listParameter.Add(new SqlParameter("@gate11", gate1Low));
                         listParameter.Add(new SqlParameter("@gate12", gate1High));
                         break;
                     case NumericSelectCriteria.GreaterThan:
-                        wheres.Add("@criteriaColumn1 > @gate11");
-                        listParameter.Add(new SqlParameter("@criteriaColumn1", criteriaColumn1));
+                        wheres.Add(criteriaColumn1 + " > @gate11");
                         listParameter.Add(new SqlParameter("@gate11", gate1Low));
                         break;
                     case NumericSelectCriteria.GreaterThanOrEqual:
-                        wheres.Add("@criteriaColumn1 >= @gate11");
-                        listParameter.Add(new SqlParameter("@criteriaColumn1", criteriaColumn1));
+                        wheres.Add(criteriaColumn1 + " >= @gate11");
                         listParameter.Add(new SqlParameter("@gate11", gate1Low));
                         break;
                     case NumericSelectCriteria.LessThan:
-                        wheres.Add("@criteriaColumn1 < @gate11");
-                        listParameter.Add(new SqlParameter("@criteriaColumn1", criteriaColumn1));
+                        wheres.Add(criteriaColumn1 + "  < @gate11");
                         listParameter.Add(new SqlParameter("@gate11", gate1Low));
                         break;
                     case NumericSelectCriteria.LessThanOrEqual:
                     default:
-                        wheres.Add("@criteriaColumn1 <= @gate11");
-                        listParameter.Add(new SqlParameter("@criteriaColumn1", criteriaColumn1));
+                        wheres.Add(criteriaColumn1 + "  <= @gate11");
                         listParameter.Add(new SqlParameter("@gate11", gate1Low));
                         break;
                 }
@@ -1234,30 +1206,25 @@ namespace Yangsi
                 switch (type2)
                 {
                     case NumericSelectCriteria.Between:
-                        wheres.Add("@criteriaColumn2 BETWEEN @gate21 AND @gate22");
-                        listParameter.Add(new SqlParameter("@criteriaColumn2", criteriaColumn2));
+                        wheres.Add(criteriaColumn2 + " BETWEEN @gate21 AND @gate22");
                         listParameter.Add(new SqlParameter("@gate21", gate2Low));
                         listParameter.Add(new SqlParameter("@gate22", gate2High));
                         break;
                     case NumericSelectCriteria.GreaterThan:
-                        wheres.Add("@criteriaColumn2 > @gate21");
-                        listParameter.Add(new SqlParameter("@criteriaColumn2", criteriaColumn1));
+                        wheres.Add(criteriaColumn2 + " > @gate21");
                         listParameter.Add(new SqlParameter("@gate21", gate2Low));
                         break;
                     case NumericSelectCriteria.GreaterThanOrEqual:
-                        wheres.Add("@criteriaColumn2 >= @gate21");
-                        listParameter.Add(new SqlParameter("@criteriaColumn2", criteriaColumn1));
+                        wheres.Add(criteriaColumn2 + " >= @gate21");
                         listParameter.Add(new SqlParameter("@gate21", gate2Low));
                         break;
                     case NumericSelectCriteria.LessThan:
-                        wheres.Add("@criteriaColumn2 < @gate21");
-                        listParameter.Add(new SqlParameter("@criteriaColumn2", criteriaColumn1));
+                        wheres.Add(criteriaColumn2 + " < @gate21");
                         listParameter.Add(new SqlParameter("@gate21", gate2Low));
                         break;
                     case NumericSelectCriteria.LessThanOrEqual:
                     default:
-                        wheres.Add("@criteriaColumn2 <= @gate21");
-                        listParameter.Add(new SqlParameter("@criteriaColumn2", criteriaColumn1));
+                        wheres.Add(criteriaColumn2 + " <= @gate21");
                         listParameter.Add(new SqlParameter("@gate21", gate2Low));
                         break;
                 }
@@ -1269,8 +1236,7 @@ namespace Yangsi
             }
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            command.CommandText = "@cmd";
-            command.Parameters.AddWithValue("@cmd", sql.ToString());
+            command.CommandText = sql.ToString();
             command.Parameters.AddRange(listParameter.ToArray());
             Console.WriteLine("sql: {0}", command.CommandText);
             DataTable table = new DataTable();
@@ -1298,7 +1264,7 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             CheckDatabaseConnection();
             //生成sql语句
-            string queryString = "select @columnName from @tableName ";
+            string queryString = "select " + column + " from " + "Table_1 ";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             if (criteriaColumn != null && criteriaColumn.Length > 0 && type != TxtSelectCriteria.None && keyWord != null && keyWord.Length > 0)
@@ -1306,29 +1272,26 @@ namespace Yangsi
                 switch(type)
                 {
                     case TxtSelectCriteria.Contain:
-                        queryString += "where @criteriaColumn LIKE %@word" + /*keyWord + */"%";
+                        queryString += "where " + criteriaColumn + " LIKE %@word%";
                         break;
                     case TxtSelectCriteria.EndWith:
-                        queryString += "where @criteriaColumn LIKE @word" + /*keyWord + */ "%";
+                        queryString += "where " + criteriaColumn + "LIKE @word%";
                         break;
                     case TxtSelectCriteria.NoContain:
-                        queryString += "where @criteriaColumn NOT LIKE %@word" +/*keyWord + */ "%";
+                        queryString += "where " + criteriaColumn + " NOT LIKE %@word%";
                         break;
                     case TxtSelectCriteria.StartWith:
                     default:
-                        queryString += "where @criteriaColumn NOT LIKE %@word" /*+ keyWord + */;
+                        queryString += "where " + criteriaColumn + " LIKE %@word";
                         break;
                 }
                 command.CommandText = queryString;
-                command.Parameters.AddWithValue("@criteriaColumn", criteriaColumn);
                 command.Parameters.AddWithValue("@word", keyWord);
             }
             else
             {
                 command.CommandText = queryString;
             }
-            command.Parameters.AddWithValue("@columnName", column);
-            command.Parameters.AddWithValue("@tableName", "tb");
             Console.WriteLine(command.CommandText);
             DataTable table = new DataTable();
             table.BeginLoadData();
@@ -1382,38 +1345,34 @@ namespace Yangsi
             if (dict.ContainsKey(criteriaColumn) && dict[criteriaColumn] == typeof(DateTime))
             {
                 //生成sql语句
-                StringBuilder sql = new StringBuilder("select @columnName from @tableName ");
+                StringBuilder sql = new StringBuilder("select ");
+                sql.Append(column);
+                sql.Append(" from ");
+                sql.Append("table");
                 List<string> wheres = new List<string>();
                 List<SqlParameter> listParameter = new List<SqlParameter>();
-                listParameter.Add(new SqlParameter("@columnName", column));
-                listParameter.Add(new SqlParameter("@tableName", "tb"));
                 switch(type)
                 {
                     case NumericSelectCriteria.Between:
-                        wheres.Add("@criteriaColumn BETWEEN @gate1 AND @gate2");
-                        listParameter.Add(new SqlParameter("@criteriaColumn", criteriaColumn));
+                        wheres.Add(criteriaColumn + " BETWEEN @gate1 AND @gate2");
                         listParameter.Add(new SqlParameter("@gate1", gate1));
                         listParameter.Add(new SqlParameter("@gate2", gate2));
                         break;
                     case NumericSelectCriteria.GreaterThan:
-                        wheres.Add("@criteriaColumn > @gate1");
-                        listParameter.Add(new SqlParameter("@criteriaColumn", criteriaColumn));
+                        wheres.Add(criteriaColumn + " > @gate1");
                         listParameter.Add(new SqlParameter("@gate1", gate1));
                         break;
                     case NumericSelectCriteria.GreaterThanOrEqual:
-                        wheres.Add("@criteriaColumn >= @gate1");
-                         listParameter.Add(new SqlParameter("@criteriaColumn", criteriaColumn));
+                        wheres.Add(criteriaColumn + " >= @gate1");
                         listParameter.Add(new SqlParameter("@gate1", gate1));
                         break;
                     case NumericSelectCriteria.LessThan:
-                        wheres.Add("@criteriaColumn < @gate1");
-                        listParameter.Add(new SqlParameter("@criteriaColumn", criteriaColumn));
+                        wheres.Add(criteriaColumn + " < @gate1");
                         listParameter.Add(new SqlParameter("@gate1", gate1));
                         break;
                     case NumericSelectCriteria.LessThanOrEqual:
                     default:
-                        wheres.Add("@criteriaColumn <= @gate1");
-                        listParameter.Add(new SqlParameter("@criteriaColumn", criteriaColumn));
+                        wheres.Add(criteriaColumn + " <= @gate1");
                         listParameter.Add(new SqlParameter("@gate1", gate1));
                         break;
                 }
@@ -1424,10 +1383,8 @@ namespace Yangsi
                 }
                 SqlCommand command = new SqlCommand();
                 command.Connection = sqlCon;
-                command.CommandText = "@cmd";
-                command.Parameters.AddWithValue("@cmd", sql.ToString());
+                command.CommandText = sql.ToString();
                 command.Parameters.AddRange(listParameter.ToArray());
-                Console.WriteLine("paras:{0},{1},{2},{3}", gate1, gate2, command.Parameters["@cmd"].Value, command.Parameters["@tableName"].Value);
                 DataTable table = new DataTable();
                 table.BeginLoadData();
                 table.Load(command.ExecuteReader());
