@@ -1,0 +1,615 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Yangsi.DatabaseUtility</name>
+    </assembly>
+    <members>
+        <member name="T:Yangsi.DatabaseUtility">
+            <summary>DatabaseUtility
+            <para>是杨思信息科技开发的一款通用数据库操作库，</para>
+            <para>将底层数据库驱动进行二次封装，提供简单的接口完成操作。</para>
+            <para>提供自定义操作接口，可执行用户输入的语句。</para>
+            <para>注意，目前仅支持二重条件筛选。</para>
+            <para>数据库支持int、string、float、DateTime数据类型。</para>
+            <para>To Do:</para>
+            <para>尽可能优化SQL语句</para>
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.#cctor">
+            <summary>
+            静态构造函数
+            <para>用来初始化支持的数据类型字典</para>
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.#ctor">
+            <summary>
+            默认构造函数
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.#ctor(System.String)">
+            <summary>
+            构造函数
+            <para>connect参数必须是包含完整数据库连接信息的参数</para>
+            <para>如无法提供完整参数，请使用无参构造函数后，调用BuildConnectionString接口</para>
+            </summary>
+            <param name="connect">用于连接数据库的字符串</param>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.#ctor(System.String,System.UInt64)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="connect">用于连接数据库的字符串</param>
+            <param name="tableSize">表的最大行数</param>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.#ctor(System.String,System.UInt64,System.UInt32)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="connect">用于连接数据库的字符串</param>
+            <param name="tableSize">表的最大行数</param>
+            <param name="columnSize">表的最大列数</param>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.Dispose">
+            <summary>
+            Dispose函数
+            <para>用于执行资源释放等功能</para>
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.Dispose(System.Boolean)">
+            <summary>
+            实际执行Dispose的函数
+            密封类修饰用private
+            </summary>
+            <param name="disposing">区别对待托管资源和非托管资源</param>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.Finalize">
+            <summary>
+            必须，以备忘记了显式调用Dispose方法
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.BuildConnectionString(System.String,System.String,System.String,System.String,System.Int32)">
+            <summary>
+            <para>创建数据库连接字符串</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <param name="databaseName">数据库名</param>
+            <param name="id">用户名</param>
+            <param name="pwd">密码</param>
+            <param name="address">数据库服务器地址
+            <para>.或localhost：本地</para>
+            </param>
+            <param name="timeout">超时时间设置(秒)</param>
+            <returns>void</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.CheckDatabaseConnection">
+            <summary>
+            检查数据库连接状态
+            </summary>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetAllTables">
+            <summary>
+            获得数据库中所有的表
+            </summary>
+            <returns>表名列表</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetColumnsInTable(System.String)">
+            <summary>
+            获得表中所有的列名
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <returns>列名列表</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetRowCountInTable(System.String)">
+            <summary>
+            获得表中当前的行数
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <returns>行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetTypeOfColumn(System.String,System.String)">
+            <summary>
+            获得表中某一列的数据类型
+            </summary>
+            <param name="table">表名</param>
+            <param name="column">列名</param>
+            <returns>数据类型</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetColumnNameOfType``1(System.String)">
+            <summary>
+            获得表中某一数据类型的列名
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="table">表名</param>
+            <returns>列名</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetColumnsAndTypeInTable(System.String)">
+            <summary>
+            获得表中所有列及其数据类型
+            </summary>
+            <param name="table">表名</param>
+            <returns>字典</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetTimeSpanInTable(System.String,System.DateTime@,System.DateTime@)">
+            <summary>
+            获得表中数据的时间区间
+            <para>如果没有时间列，抛出异常</para>
+            <para>如果有，返回值为该列名</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="start">起始时间</param>
+            <param name="end">结束时间</param>
+            <returns>列名</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.CreateTable(System.String,System.Object[])">
+            <summary>
+            创建表
+            <para>第一个参数表示列名，第二个参数表示该列数据类型，以此类推</para>
+            <para>例如,
+            <example>
+            <code>
+            <para>object[] list = new object[4];</para>
+            <para>list[0] = "custom"; </para>
+            <para>list[1] = DateTime.Now; </para>
+            <para>list[2] = "cost"; </para>               
+            <para>list[3] = 5.0;</para>
+            <para>db.CreateTable("Jim", list);</para>
+            </code>
+            </example>
+            </para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="list">参数列表</param>
+            <returns>布尔</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.DataTableToList``1(System.Data.DataTable,System.String)">
+            <summary>
+            将DataTable转换为IList
+            <para>可用于返回某一列的数据</para>
+            </summary>
+            <typeparam name="T">泛型，用于指定IList的数据类型</typeparam>
+            <param name="table">数据表</param>
+            <param name="name">要转换的数据名</param>
+            <returns>IList或者null</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.ToDataTable(System.String[],System.Object[])">
+            <summary>
+            将一维数据转换为DataTable
+            <para>Exception:</para>
+            <para>System.NotSupportedException</para>
+            </summary>
+            <param name="names">列名</param>
+            <param name="values">数组</param>
+            <returns>DataTable</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.ToDataRow(System.String[],System.Object[])">
+            <summary>
+            将一维数据转换为DataRow
+            <para>Exception:</para>
+            <para>System.NotSupportedException</para>
+            </summary>
+            <param name="names">列名</param>
+            <param name="values">数组</param>
+            <returns>DataRow</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.RemoveFromTable(System.String,System.Int32,System.String,System.Int32)">
+            <summary>
+            删除表中若干行数据
+            <para>可以清空或删除表</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table"></param>
+            <param name="count">删除数量
+            <para>0：清空表</para>
+            <para>-1: 删除表</para>
+            <para>大于0：数量</para>
+            <para>默认值：0</para>
+            </param>
+            <param name="column">排序列名
+            <para>推荐为时间列名</para></param>
+            <param name="direction">排序类型
+            <para>0：desc</para>
+            <para>1：asc</para>
+            <para>默认值：0</para>
+            </param>
+            <returns>删除的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.RemoveFromTable(System.String,System.String,Yangsi.DatabaseUtility.TxtSelectCriteria,System.String)">
+            <summary>
+            删除表中符合字符串筛选条件的数据
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="criteraColumn">筛选列名
+            <para>如需筛选多列，以英文逗号分割即可</para>
+            <para>空表示清空表</para>
+            </param>
+            <param name="way">筛选条件，包括
+            <para>Contain</para>
+            <para>NoContain</para>
+            <para>StartWith</para>
+            <para>EndWith</para>
+            <para>None</para>
+            </param>
+            <param name="critera">筛选元素</param>
+            <returns>删除的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.RemoveFromTable``1(System.String,System.String,Yangsi.DatabaseUtility.NumericSelectCriteria,``0,``0)">
+            <summary>
+            删除表中符合数字筛选条件的数据
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="criteraColumn">筛选列名
+            <para>如需筛选多列，以英文逗号分割即可</para>
+            <para>空表示清空表</para>
+            </param>
+            <param name="way">筛选条件，包括
+            <para>Less Than</para>
+            <para>Greater Than</para>
+            <para>Less Than Or Equal</para>
+            <para>Greater Than Or Equal</para>
+            <para>Between</para>
+            <para>None</para>
+            </param>
+            <param name="critera1">门限值</param>
+            <param name="critera2">门限值</param>
+            <returns>删除的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.InsertToTable(System.String,System.String,System.Object)">
+            <summary>
+             在表中添加新数据
+             <para>用于一次添加一个数据</para>
+             <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="column">数据所在的列名</param>
+            <param name="values">数值</param>
+            <returns>添加的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.InsertToTable(System.String,System.String,System.Object[])">
+            <summary>
+            在表中添加新数据
+            <para>用于一次添加一行数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            <para>System.NotSupportedException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="columns">数据所在的列名
+            <para>多个列名以,分隔</para>
+            </param>
+            <param name="values">数据</param>
+            <returns>添加的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.InsertToTable(System.String,System.Data.DataTable,System.Boolean)">
+            <summary>
+            在表中添加新数据
+            <para>可用于一次添加多行数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="datatable">数据</param>
+            <param name="insertAsCan">是否插入
+            <para>在表未达到最大行但仍不足插入所有values时，
+            此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
+            </param>
+            <returns>添加的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.InsertToTable(System.String,System.Data.DataRow[],System.Boolean)">
+            <summary>
+            在表中添加新数据
+            <para>可用于一次添加多行数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.ArgumentOutOfRangeException</para>
+            </summary>
+            <param name="table">表名</param>
+            <param name="rows">数据</param>
+            <param name="insertAsCan">是否插入
+            <para>在表未达到最大行但仍不足插入所有values时，
+            此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
+            </param>
+            <returns>添加的行数</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData``1(System.String,System.String)">
+            <summary>
+            从数据库中读取数据
+            <para>用于读取一项数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <typeparam name="T">必须是结构体</typeparam>
+            <param name="selection">查询语句
+            <param name="column">需要查询的数据名称</param>
+            <para>函数不判断查询语句的有效性</para>
+            </param>
+            <returns>IList</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData(System.String)">
+            <summary>
+            <para>从数据库中读取数据</para>
+            <para>用于读取多项数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <param name="selectionCmd">查询语句
+            <para>函数不判断查询语句的合法性</para>
+            </param>
+            <returns>DataTable</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData``1(System.String)">
+            <summary>
+            从数据库中读取数据
+            <para>用于读取一项数据</para>
+            <para>注意，本接口输入的是列名</para>
+            <para>请区别与输入参数为sql语句的接口</para>
+            </summary>
+            <typeparam name="T">必须是结构体</typeparam>
+            <param name="column">需要查询的数据列名称</param>
+            <returns></returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData``2(System.String,System.String,Yangsi.DatabaseUtility.NumericSelectCriteria,``1,``1)">
+            <summary>
+            <para>从数据库中读取数据</para> 
+            <para>用于读取数字型数据</para> 
+            <para>T、U必须是结构体</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            <para>System.InvalidOperationException</para>
+            <para>System.ArithmeticException</para>
+            <example>例如，
+            <code>
+            IList rst = GetData("压力", "压力", DatabaseUtility.NumberSelectCriteria.GreaterThan, 1.0)
+            </code>
+            </example>
+            </summary>
+            <typeparam name="T">必须是结构体</typeparam>
+            <typeparam name="U">必须是结构体</typeparam>
+            <param name="column">需要查询的数据名称</param>
+            <param name="criteriaColumn">作为筛选条件的数据名称，可以与查询名称一致</param>
+            <param name="type">筛选条件，包括：
+            <para>小于</para>
+            <para>大于</para>
+            <para>小于等于</para>
+            <para>大于等于</para>
+            <para>在范围内</para>
+            <para>无</para>
+            </param>
+            <param name="gateLow">门限值
+            <para>当筛选条件为“在范围内”时，表示下限</para>
+            </param>
+            <param name="gateHigh">门限值
+            <para>当筛选条件为“在范围内”时，表示上限。其他条件时请忽略</para>
+            </param>
+            <returns> </returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData``3(System.String,System.String,Yangsi.DatabaseUtility.NumericSelectCriteria,System.String,Yangsi.DatabaseUtility.NumericSelectCriteria,``1,``1,``2,``2)">
+            <summary>
+            <para>从数据库中读取数据</para> 
+            <para>用于读取数字型数据</para> 
+            <para>T、U、V必须是结构体</para>
+            <example>例如，
+            <code>
+            IList rst = GetData("压力", "压力", DatabaseUtility.NumberSelectCriteria.GreaterThan, , "温度", DatabaseUtility.NumberSelectCriteria.GreaterThan，1.0，10.0,1.0,23.0);
+            </code>
+            </example>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <typeparam name="T">必须是结构体</typeparam>
+            <typeparam name="U">必须是结构体</typeparam>
+            <typeparam name="V">必须是结构体</typeparam>
+            <param name="column">需要查询的数据名称</param>
+            <param name="criteriaColumn1">作为筛选条件的数据名称</param>
+            <param name="type1">筛选条件1，包括：
+            <para>小于</para>
+            <para>大于</para>
+            <para>小于等于</para>
+            <para>大于等于</para>
+            <para>在范围内</para>
+            <para>无</para>
+            </param>
+            <param name="criteriaColumn2">作为筛选条件的数据名称</param>
+            <param name="type2">筛选条件2，包括：
+            <para>小于</para>
+            <para>大于</para>
+            <para>小于等于</para>
+            <para>大于等于</para>
+            <para>在范围内</para>
+            <para>无</para>
+            </param>
+            <param name="gate1Low">筛选条件1的门限值</param>
+            <param name="gate1High">筛选条件1的门限值</param>
+            <param name="gate2Low">筛选条件2的门限值</param>
+            <param name="gate2High">筛选条件2的门限值</param>
+            <returns></returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData(System.String,System.String,Yangsi.DatabaseUtility.TxtSelectCriteria,System.String)">
+            <summary>
+            <para>从数据库中读取数据</para> 
+            <para>用于读取字符串数据</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <param name="column"></param>
+            <param name="criteriaColumn"></param>
+            <param name="type"></param>
+            <param name="keyWord"></param>
+            <returns>IList</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.GetData``1(System.String,System.String,Yangsi.DatabaseUtility.NumericSelectCriteria,``0,``0)">
+            <summary>
+            <para>从数据库中读取数据</para> 
+            <para>用于读取字符串数据</para> 
+            <para>特别用于根据时间筛选信息</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="column">数据名</param>
+            <param name="criteriaColumn">筛选条件的数据名</param>
+            <param name="type">筛选类型</param>
+            <param name="gate1">门限值
+            <para>当筛选条件为“在范围内”时，表示下限</para>
+            </param>
+            <param name="gate2">门限值
+            <para>当筛选条件为“在范围内”时，表示上限。其他条件时请忽略</para>
+            </param>
+            <returns>IList</returns>
+        </member>
+        <member name="M:Yangsi.DatabaseUtility.onUtilityEvent(Yangsi.DatabaseUtility.DbUtilityEvent)">
+            <summary>
+            触发事件
+            </summary>
+            <param name="e"></param>
+        </member>
+        <member name="P:Yangsi.DatabaseUtility.ConnectionString">
+            <summary>
+            获得用于连接数据库的信息
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+        </member>
+        <member name="P:Yangsi.DatabaseUtility.MaxTableRowSize">
+            <summary>
+            获得或设置数据表的最大行数
+            <para>0：无限制</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+        </member>
+        <member name="P:Yangsi.DatabaseUtility.MaxTableColumnSize">
+            <summary>
+            获得或设置数据表的最大列数
+            <para>0：无限制</para>
+            <para>Exceptions:</para> 
+            <para>System.ArgumentException</para>
+            </summary>
+        </member>
+        <member name="E:Yangsi.DatabaseUtility.UtilityEvent">
+            <summary>
+            事件处理
+            </summary>
+        </member>
+        <member name="T:Yangsi.DatabaseUtility.NumericSelectCriteria">
+            <summary>
+            数字筛选的方式
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.LessThan">
+            <summary>
+            小于
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.GreaterThan">
+            <summary>
+            大于
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.LessThanOrEqual">
+            <summary>
+            小于等于
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.GreaterThanOrEqual">
+            <summary>
+            大于等于
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.Between">
+            <summary>
+            在区间内
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.NumericSelectCriteria.None">
+            <summary>
+            无
+            </summary>
+        </member>
+        <member name="T:Yangsi.DatabaseUtility.TxtSelectCriteria">
+            <summary>
+            字符串筛选的方式
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.Contain">
+            <summary>
+            包含
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.NoContain">
+            <summary>
+            不包含
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.StartWith">
+            <summary>
+            以开始
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.EndWith">
+            <summary>
+            以结尾
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.None">
+            <summary>
+            无
+            </summary>
+        </member>
+        <member name="T:Yangsi.DatabaseUtility.DbUtilityEvent">
+            <summary>
+            事件参数
+            <para>sealed</para>
+            </summary>
+        </member>
+        <member name="P:Yangsi.DatabaseUtility.DbUtilityEvent.msg">
+            <summary>
+            信息
+            </summary>
+        </member>
+        <member name="P:Yangsi.DatabaseUtility.DbUtilityEvent.TimeReached">
+            <summary>
+            时间戳
+            </summary>
+        </member>
+        <member name="T:Yangsi.Compare`1">
+            <summary>
+            泛型比较类
+            <para>用于验证筛选条件为Between时上下限的验证</para>
+            <para>好像也可以不要验证，待确认</para>
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="M:Yangsi.Compare`1.compareGeneric(`0,`0)">
+            <summary>
+            使用泛型实现的比较方法
+            </summary>
+            <param name="t1"></param>
+            <param name="t2"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

@@ -763,20 +763,25 @@ namespace Yangsi
             strBuilder.Append("Delete From ");
             strBuilder.Append(table);
             List<string> wheres = new List<string>();
+            string parameters = "";
             switch(way)
             {
                 case TxtSelectCriteria.Contain:
-                    wheres.Add(criteraColumn + " LIKE '%" + critera + "%'");
+                    wheres.Add(criteraColumn + " LIKE @paras");
+                    parameters = "%" + critera + "%";
                     break;
                 case TxtSelectCriteria.EndWith:
-                    wheres.Add(criteraColumn + " LIKE '" + critera + "%'");
+                    wheres.Add(criteraColumn + " LIKE @paras");
+                    parameters = "" + critera + "%";
                     break;
                 case TxtSelectCriteria.NoContain:
-                    wheres.Add(criteraColumn + " NOT LIKE '%" + critera + "%'");
+                    wheres.Add(criteraColumn + " NOT LIKE @paras");
+                    parameters = "%" + critera + "%";
                     break;
                 case TxtSelectCriteria.StartWith:
                 default:
-                    wheres.Add(criteraColumn + " LIKE '%" + critera + "'");
+                    wheres.Add(criteraColumn + " LIKE @paras");
+                    parameters = "%" + critera + "";
                     break;
             }
             if (wheres.Count > 0)
@@ -787,6 +792,7 @@ namespace Yangsi
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             command.CommandText = strBuilder.ToString();
+            command.Parameters.AddWithValue("@paras", parameters);
             return command.ExecuteNonQuery();
         }
         /// <summary>
@@ -1273,6 +1279,7 @@ namespace Yangsi
             CheckDatabaseConnection();
             //生成sql语句
             string queryString = "select " + column + " from " + "Table_1 ";
+            string parameters = "";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             if (criteriaColumn != null && criteriaColumn.Length > 0 && type != TxtSelectCriteria.None && keyWord != null && keyWord.Length > 0)
@@ -1280,20 +1287,25 @@ namespace Yangsi
                 switch(type)
                 {
                     case TxtSelectCriteria.Contain:
-                        queryString += "where " + criteriaColumn + " LIKE '%" + keyWord + "%'";
+                        queryString += "where " + criteriaColumn + " LIKE @paras";
+                        parameters = "%" + keyWord + "%";
                         break;
                     case TxtSelectCriteria.EndWith:
-                        queryString += "where " + criteriaColumn + " LIKE '" + keyWord + "%'";
+                        queryString += "where " + criteriaColumn + " LIKE @paras";
+                        parameters = "" + keyWord + "%";
                         break;
                     case TxtSelectCriteria.NoContain:
-                        queryString += "where " + criteriaColumn + " NOT LIKE '%" + keyWord + "%'";
+                        queryString += "where " + criteriaColumn + " NOT LIKE @paras";
+                        parameters = "%" + keyWord + "%";
                         break;
                     case TxtSelectCriteria.StartWith:
                     default:
-                        queryString += "where " + criteriaColumn + " LIKE '%" + keyWord + "%'";
+                        queryString += "where " + criteriaColumn + " LIKE @paras";
+                        parameters = "%" + keyWord + "";
                         break;
                 }
                 command.CommandText = queryString;
+                command.Parameters.AddWithValue("@paras", parameters);
             }
             else
             {
