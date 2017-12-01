@@ -291,8 +291,9 @@ namespace Yangsi
         /// <param name="address">数据库服务器地址
         /// <para>.或localhost：本地</para>
         /// </param>
+        /// <param name="timeout">超时时间设置(秒)</param>
         /// <returns>void</returns>
-        public virtual void BuildConnectionString(string databaseName, string id = "", string pwd = "", string address = ".")
+        public virtual void BuildConnectionString(string databaseName, string id = "", string pwd = "", string address = ".",int timeout =10)
         {
             //Address不能为空字符串
             if (address == null || address.Length < 1)
@@ -309,6 +310,7 @@ namespace Yangsi
             sBuilder.UserID = id;
             sBuilder.Password = pwd;
             sBuilder.IntegratedSecurity = true;
+            sBuilder.ConnectTimeout = timeout;
             this.ConnectionString = sBuilder.ConnectionString;
             return;
         }
