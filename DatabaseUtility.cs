@@ -16,6 +16,7 @@ namespace Yangsi
     /// <para>数据库支持int、string、float、DateTime数据类型。</para>
     /// <para>To Do:</para>
     /// <para>尽可能优化SQL语句</para>
+    /// <para>在Sql Server 2008下测试</para>
     /// </summary>
     public class DatabaseUtility:IDisposable
     {
