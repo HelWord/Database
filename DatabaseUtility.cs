@@ -751,24 +751,22 @@ namespace Yangsi
             strBuilder.Append("Delete From ");
             strBuilder.Append(table);
             List<string> wheres = new List<string>();
-            List<SqlParameter> listParameter = new List<SqlParameter>();
             switch(way)
             {
                 case TxtSelectCriteria.Contain:
-                    wheres.Add(criteraColumn + " LIKE '%@word%'");
+                    wheres.Add(criteraColumn + " LIKE '%" + critera + "%'");
                     break;
                 case TxtSelectCriteria.EndWith:
-                    wheres.Add(criteraColumn + " LIKE '@word%'");
+                    wheres.Add(criteraColumn + " LIKE '" + critera + "%'");
                     break;
                 case TxtSelectCriteria.NoContain:
-                    wheres.Add(criteraColumn + " NOT LIKE '%@word%'");
+                    wheres.Add(criteraColumn + " NOT LIKE '%" + critera + "%'");
                     break;
                 case TxtSelectCriteria.StartWith:
                 default:
-                    wheres.Add(criteraColumn + " LIKE '%@word'");
+                    wheres.Add(criteraColumn + " LIKE '%" + critera + "'");
                     break;
             }
-            listParameter.Add(new SqlParameter("@word", critera));
             if (wheres.Count > 0)
             {
                 string wh = string.Join(" and ", wheres.ToArray());
@@ -777,8 +775,6 @@ namespace Yangsi
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             command.CommandText = strBuilder.ToString();
-            command.Parameters.AddRange(listParameter.ToArray());
-            Console.WriteLine(command.Parameters["@word"].Value);
             return command.ExecuteNonQuery();
         }
         /// <summary>
@@ -1272,21 +1268,20 @@ namespace Yangsi
                 switch(type)
                 {
                     case TxtSelectCriteria.Contain:
-                        queryString += "where " + criteriaColumn + " LIKE %@word%";
+                        queryString += "where " + criteriaColumn + " LIKE '%" + keyWord + "%'";
                         break;
                     case TxtSelectCriteria.EndWith:
-                        queryString += "where " + criteriaColumn + "LIKE @word%";
+                        queryString += "where " + criteriaColumn + " LIKE '" + keyWord + "%'";
                         break;
                     case TxtSelectCriteria.NoContain:
-                        queryString += "where " + criteriaColumn + " NOT LIKE %@word%";
+                        queryString += "where " + criteriaColumn + " NOT LIKE '%" + keyWord + "%'";
                         break;
                     case TxtSelectCriteria.StartWith:
                     default:
-                        queryString += "where " + criteriaColumn + " LIKE %@word";
+                        queryString += "where " + criteriaColumn + " LIKE '%" + keyWord + "%'";
                         break;
                 }
                 command.CommandText = queryString;
-                command.Parameters.AddWithValue("@word", keyWord);
             }
             else
             {
