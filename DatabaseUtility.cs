@@ -14,6 +14,8 @@ namespace Yangsi
     /// <para>提供自定义操作接口，可执行用户输入的语句。</para>
     /// <para>注意，目前仅支持二重条件筛选。</para>
     /// <para>数据库支持int、string、float、DateTime数据类型。</para>
+    /// <para>To Do:</para>
+    /// <para>尽可能优化SQL语句</para>
     /// </summary>
     public class DatabaseUtility:IDisposable
     {
@@ -35,10 +37,10 @@ namespace Yangsi
         static DatabaseUtility()
         {
             supportedTypeDict = new Dictionary<Type, String> { 
-                {typeof(int),"INTEGER "},
-                {typeof(string),"NTEXT"},
-                {typeof(float),"FLOAT(24)"},
-                {typeof(DateTime),"DATETIME"},
+                {typeof(int),"int "},
+                {typeof(string),"ntext"},
+                {typeof(float),"real"},
+                {typeof(DateTime),"datetime"},
                 };
         }
 
@@ -53,6 +55,7 @@ namespace Yangsi
             maxTableSize = 0;
             sqlCon = new SqlConnection();
         }
+
         /// <summary>
         /// 构造函数
         /// <para>connect参数必须是包含完整数据库连接信息的参数</para>
@@ -63,6 +66,7 @@ namespace Yangsi
         {
             this.ConnectionString = connect;
         }
+
         /// <summary>
         /// 构造函数
         /// </summary>
@@ -310,7 +314,7 @@ namespace Yangsi
         }
 
         /// <summary>
-        /// 判断数据库连接状态
+        /// 检查数据库连接状态
         /// </summary>
         private void CheckDatabaseConnection()
         {
@@ -415,13 +419,13 @@ namespace Yangsi
         /// <param name="table">表名</param>
         /// <param name="column">列名</param>
         /// <returns>数据类型</returns>
-        public virtual Type GetTypeOfColumn(string table, string column)
+        public virtual string GetTypeOfColumn(string table, string column)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (column == null || column.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "column");
-            Dictionary<string, Type> dic = this.GetColumnsAndTypeInTable(table);
+            Dictionary<string, string> dic = this.GetColumnsAndTypeInTable(table);
             if (dic.ContainsKey(column))
                 return dic[column];
             return null;
@@ -437,13 +441,13 @@ namespace Yangsi
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
-            Dictionary<string, Type> dic = this.GetColumnsAndTypeInTable(table);
+            Dictionary<string, string> dic = this.GetColumnsAndTypeInTable(table);
             var dateCoumns =
                 from entry in dic
-                where (entry.Value == typeof(T))
+                where (entry.Value == typeof(T).ToString())
                 select entry.Key;
             if (dateCoumns.Count() <= 0)
-                throw new System.ArgumentException("There is no DateTime Column In table.", "table");
+                throw new System.ArgumentException("There is no " + typeof(T).ToString() + " Column In table.", "table"); ;
             //表中可能有多个符合条件列，默认取第一个列
             return dateCoumns.ElementAt(0);
         }
@@ -453,7 +457,7 @@ namespace Yangsi
         /// </summary>
         /// <param name="table">表名</param>
         /// <returns>字典</returns>
-        public virtual Dictionary<string,Type> GetColumnsAndTypeInTable(string table)
+        public virtual Dictionary<string, string> GetColumnsAndTypeInTable(string table)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
@@ -465,13 +469,19 @@ namespace Yangsi
             command.CommandText = queryString;
             command.CommandType = CommandType.Text;
             command.Parameters.AddWithValue("@tableName", table);
-            Dictionary<string, Type> dic = new Dictionary<string,Type>();
+            Dictionary<string, string> dic = new Dictionary<string, string>();
             using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read())
                 {
-                    //需转换为string、DateTime、int等类型
-                    dic.Add(reader[0].ToString(), reader[1].GetType());
+                    //转换为string、DateTime、int等类型
+                    string sTemp = reader[1].ToString();
+                    if(supportedTypeDict.ContainsValue(sTemp))
+                    {
+                        var query = supportedTypeDict.Single(k => k.Value == sTemp).Key;
+                        sTemp = query.ToString();
+                    }
+                    dic.Add(reader[0].ToString(), sTemp.ToString());
                 }
             }
              return dic;
@@ -496,10 +506,10 @@ namespace Yangsi
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             //第一步 查询表中是否存在DateTime列
-            Dictionary<string, Type> t = this.GetColumnsAndTypeInTable(table);
+            Dictionary<string, string> t = this.GetColumnsAndTypeInTable(table);
             var dateCoumns =
                 from entry in t
-                where (entry.Value ==typeof(DateTime))
+                where (entry.Value ==typeof(DateTime).ToString())
                 select entry.Key;
             if (dateCoumns.Count() <= 0)
                 throw new System.ArgumentException("There is no DateTime Column In table.", "table");
@@ -1327,17 +1337,9 @@ namespace Yangsi
                 IList<string> t = this.GetData(column, "",TxtSelectCriteria.None,"");
                 return t;
             }
-            Dictionary<string, Type> dict = this.GetColumnsAndTypeInTable("table");
-            //Dictionary<string, Type> dict;
-            //dict = new Dictionary<string, Type> { 
-            //    {"integer ",typeof(int)},
-            //    {"nchar(max)",typeof(string)},
-            //    {"float",typeof(float)},
-            //    {"datetime",typeof(DateTime)},
-            //    {"datetim2e",typeof(DateTime)},
-            //    };
+            Dictionary<string, string> dict = this.GetColumnsAndTypeInTable("table");
             //判断筛选列是否为DateTime格式
-            if (dict.ContainsKey(criteriaColumn) && dict[criteriaColumn] == typeof(DateTime))
+            if (dict.ContainsKey(criteriaColumn) && dict[criteriaColumn] == typeof(DateTime).ToString())
             {
                 //生成sql语句
                 StringBuilder sql = new StringBuilder("select ");
