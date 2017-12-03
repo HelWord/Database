@@ -39,7 +39,7 @@ namespace Yangsi
         {
             supportedTypeDict = new Dictionary<Type, String> { 
                 {typeof(int),"int "},
-                {typeof(string),"ntext"},
+                {typeof(string),"nvarchar"},
                 {typeof(float),"real"},
                 {typeof(DateTime),"datetime"},
                 };
@@ -479,6 +479,7 @@ namespace Yangsi
                 {
                     //转换为string、DateTime、int等类型
                     string sTemp = reader[1].ToString();
+                    Console.WriteLine(sTemp);
                     if(supportedTypeDict.ContainsValue(sTemp))
                     {
                         var query = supportedTypeDict.Single(k => k.Value == sTemp).Key;
@@ -518,17 +519,19 @@ namespace Yangsi
                 throw new System.ArgumentException("There is no DateTime Column In table.", "table");
             //表中可能有多个DateTime列，默认取第一个列
             string dateCoumnName = dateCoumns.ElementAt(0);
+            Console.WriteLine(dateCoumnName);
+
             //第二步 取最早和最晚的时间
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
-            string queryString = "select top 1 " + dateCoumnName + " from" + table + "order by @columnName";
+            string queryString = "select top 1 " + dateCoumnName + " from " + table + " order by " + dateCoumnName + ";";
             command.CommandText = queryString;
-            command.Parameters.AddWithValue("@columnName", dateCoumnName);
+            Console.WriteLine(command.CommandText);
             start = Convert.ToDateTime(command.ExecuteScalar());
 
-            queryString = "select top 1 " + dateCoumnName + " from" + table + "order by @columnName desc";
+            queryString = "select top 1 " + dateCoumnName + " from " + table + " order by " + dateCoumnName + " desc ;";
             command.CommandText = queryString;
-            command.Parameters.AddWithValue("@columnName", dateCoumnName);
+            Console.WriteLine(command.CommandText);
             end = Convert.ToDateTime(command.ExecuteScalar());
             return dateCoumnName;
         }
@@ -560,6 +563,9 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (list == null || list.Length <= 0 || list.Length % 2 != 0)
                 throw new System.ArgumentException("Insuffient table column information.", "list");
+            if (this.MaxTableColumnSize > 0 && list.Length / 2 > this.MaxTableColumnSize)
+                throw new System.ArgumentOutOfRangeException("list", string.Format("Column count {0 }is larger than max {1} in table",
+                    list.Length / 2, this.maxColumnNumber));
             if (this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", table + "name is already Exist.");
             StringBuilder sBuilder = new StringBuilder("CREATE TABLE ");
@@ -687,10 +693,10 @@ namespace Yangsi
         /// <param name="direction">排序类型
         /// <para>0：desc</para>
         /// <para>1：asc</para>
-        /// <para>默认值：0</para>
+        /// <para>默认值：1</para>
         /// </param>
         /// <returns>删除的行数</returns>
-        public virtual int RemoveFromTable(string table, int count = 0, string column = "", int direction = 0)
+        public virtual int RemoveFromTable(string table, int count = 0, string column = "", int direction = 1)
         {
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
@@ -713,19 +719,15 @@ namespace Yangsi
             }
             else if (count > 0 && column != null && column.Length > 0)
             {
-                sqlCommand = string.Format("DELETE FROM {0} WHERE {1} IN(select top @count @column from {0} order by {1} @direction)",
-                    table,column);
+                sqlCommand = string.Format("DELETE FROM {0} WHERE {1} IN(select top {2} {1} from {0} order by {1} {3});",
+                    table, column, count, direction > 0 ? "asc" : "desc"); //
                 command.CommandText = sqlCommand;
-                command.Parameters.AddWithValue("@count", count);
-                command.Parameters.AddWithValue("@direction", direction > 0 ? "asc" : "desc");
             }
             else
             {
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             }
             Console.WriteLine(command.CommandText);
-            command.Parameters.AddWithValue("@count", count);
-            Console.WriteLine(command.Parameters["@direction"].Value);
             return command.ExecuteNonQuery();
         }
 
