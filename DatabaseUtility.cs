@@ -1187,7 +1187,7 @@ namespace Yangsi
             StringBuilder sql = new StringBuilder("select ");
             sql.Append(column);
             sql.Append(" from ");
-            sql.Append("");
+            sql.Append("Jim");
             List<string> wheres = new List<string>();
             List<SqlParameter> listParameter = new List<SqlParameter>();
             if (criteriaColumn1 != null && criteriaColumn1.Length > 0 && type1 != NumericSelectCriteria.None)
