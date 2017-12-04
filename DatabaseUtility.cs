@@ -715,7 +715,6 @@ namespace Yangsi
             {
                 sqlCommand = "DROP TABLE " + table;
                 command.CommandText = sqlCommand;
-                command.Parameters.AddWithValue("@table", table);
             }
             else if (count > 0 && column != null && column.Length > 0)
             {
@@ -898,9 +897,12 @@ namespace Yangsi
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             if(values == null)
                 throw new System.ArgumentException("Parameter can not be null.", "value");
-            ulong count = this.GetRowCountInTable(table);
-            if (MaxTableRowSize != 0 && count >= MaxTableRowSize)
-                throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
+            if (MaxTableRowSize > 0)
+            {
+                ulong count = this.GetRowCountInTable(table);
+                if (count >= MaxTableRowSize)
+                    throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
+            }
             string strCmd = "INSERT INTO " + table + "(" + column + ")" + " VALUES (@myvalues);";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
@@ -934,6 +936,15 @@ namespace Yangsi
             string[] names = columns.Split(',');
             if (names.Length != values.Length)
                 throw new System.NotSupportedException("Lengths of columns and values are not equal.");
+            CheckDatabaseConnection();
+            if (!this.GetAllTables().Contains(table))
+                throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
+            if (MaxTableRowSize > 0)
+            {
+                ulong count = this.GetRowCountInTable(table);
+                if (count >= MaxTableRowSize)
+                    throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
+            }
             StringBuilder strBuilder = new StringBuilder();
             strBuilder.Append("INSERT INTO ");
             strBuilder.Append(table + " (");
@@ -952,9 +963,6 @@ namespace Yangsi
             command.Connection = sqlCon;
             command.CommandText = strBuilder.ToString();
             command.Parameters.AddRange(listParameters.ToArray());
-            CheckDatabaseConnection();
-            if (!this.GetAllTables().Contains(table))
-                throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
             return command.ExecuteNonQuery();
         }
 
@@ -972,7 +980,7 @@ namespace Yangsi
         /// <para>在表未达到最大行但仍不足插入所有values时，
         /// 此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
         /// </param>
-        /// <returns>添加的行数</returns>
+        /// <returns></returns>
         public virtual void InsertToTable(string table, DataTable datatable, bool insertAsCan)
         {
             if (table == null || table.Length <= 0)
@@ -980,6 +988,12 @@ namespace Yangsi
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
+            if (MaxTableRowSize > 0)
+            {
+                ulong count = this.GetRowCountInTable(table);
+                if (count >= MaxTableRowSize || count + (ulong)datatable.Rows.Count > MaxTableRowSize)
+                    throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
+            }
             SqlBulkCopy bulkCopy = new SqlBulkCopy(sqlCon);
             bulkCopy.DestinationTableName = table;
             bulkCopy.WriteToServer(datatable);
@@ -1001,7 +1015,7 @@ namespace Yangsi
         /// <para>在表未达到最大行但仍不足插入所有values时，
         /// 此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
         /// </param>
-        /// <returns>添加的行数</returns>
+        /// <returns></returns>
         public virtual void InsertToTable(string table, DataRow[] rows, bool insertAsCan)
         {
             if (table == null || table.Length <= 0)
@@ -1009,6 +1023,12 @@ namespace Yangsi
             CheckDatabaseConnection();
             if (!this.GetAllTables().Contains(table))
                 throw new System.ArgumentOutOfRangeException("table", "Parameter does not exist.");
+            if (MaxTableRowSize > 0)
+            {
+                ulong count = this.GetRowCountInTable(table);
+                if (count >= MaxTableRowSize || count + (ulong)rows.LongLength > MaxTableRowSize)
+                    throw new Exception(String.Format("Insert failed, current rows in {0} is {1} ,exceed the limit {2}.", table, count, MaxTableRowSize));
+            }
             SqlBulkCopy bulkCopy = new SqlBulkCopy(sqlCon);
             bulkCopy.DestinationTableName = table;
             bulkCopy.WriteToServer(rows);

@@ -13,6 +13,7 @@
             <para>数据库支持int、string、float、DateTime数据类型。</para>
             <para>To Do:</para>
             <para>尽可能优化SQL语句</para>
+            <para>在Sql Server 2008下测试</para>
             </summary>
         </member>
         <member name="M:Yangsi.DatabaseUtility.#cctor">
@@ -223,7 +224,7 @@
             <param name="direction">排序类型
             <para>0：desc</para>
             <para>1：asc</para>
-            <para>默认值：0</para>
+            <para>默认值：1</para>
             </param>
             <returns>删除的行数</returns>
         </member>
@@ -316,7 +317,7 @@
             <para>在表未达到最大行但仍不足插入所有values时，
             此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
             </param>
-            <returns>添加的行数</returns>
+            <returns></returns>
         </member>
         <member name="M:Yangsi.DatabaseUtility.InsertToTable(System.String,System.Data.DataRow[],System.Boolean)">
             <summary>
@@ -332,7 +333,7 @@
             <para>在表未达到最大行但仍不足插入所有values时，
             此标志用于说明是否继续插入直到达到最大行或者取消本次插入</para>
             </param>
-            <returns>添加的行数</returns>
+            <returns></returns>
         </member>
         <member name="M:Yangsi.DatabaseUtility.GetData``1(System.String,System.String)">
             <summary>
