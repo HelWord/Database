@@ -23,7 +23,6 @@ namespace Yangsi
         #region 字段
         private uint maxColumnNumber;
         private string connectionString;
-        private string databaseName;
         private ulong maxTableSize;
         private SqlConnection sqlCon;
         private bool disposed = false;
@@ -39,7 +38,7 @@ namespace Yangsi
         {
             supportedTypeDict = new Dictionary<Type, String> { 
                 {typeof(int),"int "},
-                {typeof(string),"nvarchar"},
+                {typeof(string),"nvarchar(255)"},
                 {typeof(float),"real"},
                 {typeof(DateTime),"datetime"},
                 };
@@ -51,7 +50,6 @@ namespace Yangsi
         public DatabaseUtility()
         {
             connectionString = "";
-            databaseName = "";
             maxColumnNumber = 0;
             maxTableSize = 0;
             sqlCon = new SqlConnection();
@@ -303,8 +301,6 @@ namespace Yangsi
                 throw new System.ArgumentException("Parameter cannot be null or empty", "DatabaseName");
             if (id == null || pwd == null)
                 throw new System.ArgumentException("Parameters cannot be null", "Id or Password");
-            //用于获得表时
-            this.databaseName = databaseName;
             SqlConnectionStringBuilder sBuilder = new SqlConnectionStringBuilder();
             sBuilder.DataSource = address;
             sBuilder.InitialCatalog = databaseName;
@@ -321,6 +317,7 @@ namespace Yangsi
         /// </summary>
         private void CheckDatabaseConnection()
         {
+            //2017-12-04 pass
             //是否初始化
             sqlCon = sqlCon ?? new SqlConnection();
             //是否已打开
@@ -345,15 +342,14 @@ namespace Yangsi
         /// <returns>表名列表</returns>
         public List<string> GetAllTables()
         {
+            //2017-12-04 pass
             CheckDatabaseConnection();
-            string queryString = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'  AND TABLE_CATALOG = @dbName;";
-            //queryString = "SELECT SysObjects.name FROM sysobjects WHERE type = 'U' AND sysstat = '83'";
+            string queryString = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'  AND TABLE_NAME <> 'sysdiagrams' ";
+            List<string> str = new List<string>();
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
             command.CommandText = queryString;
             command.CommandType = CommandType.Text;
-            command.Parameters.AddWithValue("@dbName", this.databaseName);
-            List<string> str = new List<string>();
             using (SqlDataReader reader = command.ExecuteReader())
             {
                 while (reader.Read())
@@ -373,6 +369,7 @@ namespace Yangsi
         /// <returns>列名列表</returns>
         public virtual List<string> GetColumnsInTable(string table)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (!this.GetAllTables().Contains(table))
@@ -405,6 +402,7 @@ namespace Yangsi
         /// <returns>行数</returns>
         public virtual ulong GetRowCountInTable(string table)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (!this.GetAllTables().Contains(table))
@@ -424,6 +422,7 @@ namespace Yangsi
         /// <returns>数据类型</returns>
         public virtual string GetTypeOfColumn(string table, string column)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (column == null || column.Length <= 0)
@@ -442,6 +441,7 @@ namespace Yangsi
         /// <returns>列名</returns>
         public virtual string GetColumnNameOfType<T>(string table)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             Dictionary<string, string> dic = this.GetColumnsAndTypeInTable(table);
@@ -462,6 +462,7 @@ namespace Yangsi
         /// <returns>字典</returns>
         public virtual Dictionary<string, string> GetColumnsAndTypeInTable(string table)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (!this.GetAllTables().Contains(table))
@@ -480,6 +481,7 @@ namespace Yangsi
                     //转换为string、DateTime、int等类型
                     string sTemp = reader[1].ToString();
                     Console.WriteLine(sTemp);
+                    sTemp = sTemp == "nvarchar" ? "nvarchar(255)" : sTemp;
                     if(supportedTypeDict.ContainsValue(sTemp))
                     {
                         var query = supportedTypeDict.Single(k => k.Value == sTemp).Key;
@@ -505,6 +507,7 @@ namespace Yangsi
         /// <returns>列名</returns>
         public virtual string GetTimeSpanInTable(string table, out DateTime start, out DateTime end)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (!this.GetAllTables().Contains(table))
@@ -559,6 +562,7 @@ namespace Yangsi
         /// <returns>布尔</returns>
         public virtual bool CreateTable(string table, params object[] list)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter cannot be null or empty.", "table");
             if (list == null || list.Length <= 0 || list.Length % 2 != 0)
@@ -609,14 +613,18 @@ namespace Yangsi
         /// <returns>IList或者null</returns>
         public virtual IList<T> DataTableToList<T>(DataTable table, string name)
         {
+            //2017-12-04 pass
             if (table == null || table.Columns.Count <= 0 || name == null || name.Length < 0)
                 return null;
             int index = table.Columns.IndexOf(name);
             if (index < 0)
-                return null;
+                throw new System.ArgumentOutOfRangeException("name", "column name does not inclued in table.");
+            Console.WriteLine(index);
             List<object> list = table.AsEnumerable().Select(r => r[name]).ToList();
             if (list == null || list.Count <= 0)
                 return null;
+            Console.WriteLine(list[0].GetType());
+            Console.WriteLine(typeof(T));
             return list.OfType<T>().ToList();
         }
 
@@ -630,6 +638,7 @@ namespace Yangsi
         /// <returns>DataTable</returns>
         public virtual DataTable ToDataTable(string[] names, params object[] values)
         {
+            //2017-12-04 pass
             if (names.Length != values.Length)
                 throw new System.NotSupportedException("Lengths of columns and values are not equal.");
             DataTable table = new DataTable();
@@ -708,16 +717,19 @@ namespace Yangsi
             string sqlCommand;
             if (count == 0)
             {
+                //清空表 2017-12-04 pass
                 sqlCommand = "DELETE  FROM " + table;
                 command.CommandText = sqlCommand;
             }
             else if(count == -1)
             {
+                //删除表 2017-12-04 pass
                 sqlCommand = "DROP TABLE " + table;
                 command.CommandText = sqlCommand;
             }
             else if (count > 0 && column != null && column.Length > 0)
             {
+                //删除表 2017-12-04 pass
                 sqlCommand = string.Format("DELETE FROM {0} WHERE {1} IN(select top {2} {1} from {0} order by {1} {3});",
                     table, column, count, direction > 0 ? "asc" : "desc"); //
                 command.CommandText = sqlCommand;
@@ -752,6 +764,7 @@ namespace Yangsi
         /// <returns>删除的行数</returns>
         public virtual int RemoveFromTable(string table, string criteraColumn = "", TxtSelectCriteria way = TxtSelectCriteria.None, string critera = "")
         {
+            //删除表 2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
@@ -823,6 +836,7 @@ namespace Yangsi
             NumericSelectCriteria way = NumericSelectCriteria.None, T critera1 = default(T), T critera2 = default(T))
             where T:struct,IComparable
         {
+            //删除表 2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
@@ -890,6 +904,7 @@ namespace Yangsi
         /// <returns>添加的行数</returns>
         public virtual int InsertToTable(string table, string column, object values)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
@@ -927,6 +942,7 @@ namespace Yangsi
         /// <returns>添加的行数</returns>
         public virtual int InsertToTable(string table, string columns, params object[] values)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             if (columns == null || columns.Length <= 0)
@@ -983,6 +999,7 @@ namespace Yangsi
         /// <returns></returns>
         public virtual void InsertToTable(string table, DataTable datatable, bool insertAsCan)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
@@ -1018,6 +1035,7 @@ namespace Yangsi
         /// <returns></returns>
         public virtual void InsertToTable(string table, DataRow[] rows, bool insertAsCan)
         {
+            //2017-12-04 pass
             if (table == null || table.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "table");
             CheckDatabaseConnection();
@@ -1103,6 +1121,7 @@ namespace Yangsi
         public virtual IList<T> GetData<T>(string column)
             where T : struct,IComparable
         {
+            //2017-12-04 pass
             IList<T> t = new List<T>();
             t = this.GetData<T, T, T>(column);
             return t;
@@ -1146,6 +1165,7 @@ namespace Yangsi
             where T : struct,IComparable
             where U : struct,IComparable
         {
+            //2017-12-04 pass
             IList<T> t = new List<T>();
             t = this.GetData<T,U,U>(column,criteriaColumn,type,"",NumericSelectCriteria.None,gateLow,gateHigh);
             return t;
@@ -1199,6 +1219,7 @@ namespace Yangsi
             where U : struct,IComparable
             where V : struct,IComparable
         {
+            //2017-12-04 pass
             if (column == null || column.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             CheckDatabaseConnection();
@@ -1297,11 +1318,12 @@ namespace Yangsi
         /// <returns>IList</returns>
         public virtual IList<string> GetData(string column, string criteriaColumn = "", TxtSelectCriteria type = TxtSelectCriteria.None, string keyWord = "")
         {
+            //2017-12-04 pass
             if (column == null || column.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             CheckDatabaseConnection();
             //生成sql语句
-            string queryString = "select " + column + " from " + "Table_1 ";
+            string queryString = "select " + column + " from " + "Jim ";
             string parameters = "";
             SqlCommand command = new SqlCommand();
             command.Connection = sqlCon;
@@ -1346,7 +1368,7 @@ namespace Yangsi
         /// <summary>
         /// <para>从数据库中读取数据</para> 
         /// <para>用于读取字符串数据</para> 
-        /// <para>特别用于根据时间筛选信息</para>
+        /// <para>特别用于根据时间筛选符合条件的字符串信息</para>
         /// <para>Exceptions:</para> 
         /// <para>System.ArgumentException</para>
         /// </summary>
@@ -1366,6 +1388,7 @@ namespace Yangsi
             T gate1 = default(T), T gate2 = default(T))
             where T : struct
         {
+            //2017-12-04 pass
             if (column == null || column.Length <= 0)
                 throw new System.ArgumentException("Parameter can not be null or empty.", "column");
             CheckDatabaseConnection();
@@ -1374,15 +1397,15 @@ namespace Yangsi
                 IList<string> t = this.GetData(column, "",TxtSelectCriteria.None,"");
                 return t;
             }
-            Dictionary<string, string> dict = this.GetColumnsAndTypeInTable("table");
+            Dictionary<string, string> dict = this.GetColumnsAndTypeInTable("Jim");
             //判断筛选列是否为DateTime格式
-            if (dict.ContainsKey(criteriaColumn) && dict[criteriaColumn] == typeof(DateTime).ToString())
+            if (dict.ContainsKey(criteriaColumn) && dict[criteriaColumn] == typeof(T).ToString())
             {
                 //生成sql语句
                 StringBuilder sql = new StringBuilder("select ");
                 sql.Append(column);
                 sql.Append(" from ");
-                sql.Append("table");
+                sql.Append("Jim");
                 List<string> wheres = new List<string>();
                 List<SqlParameter> listParameter = new List<SqlParameter>();
                 switch(type)
@@ -1418,7 +1441,9 @@ namespace Yangsi
                 SqlCommand command = new SqlCommand();
                 command.Connection = sqlCon;
                 command.CommandText = sql.ToString();
+                Console.WriteLine(command.CommandText);
                 command.Parameters.AddRange(listParameter.ToArray());
+                Console.WriteLine(command.Parameters["@gate1"].Value);
                 DataTable table = new DataTable();
                 table.BeginLoadData();
                 table.Load(command.ExecuteReader());

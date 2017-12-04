@@ -465,7 +465,7 @@
             <summary>
             <para>从数据库中读取数据</para> 
             <para>用于读取字符串数据</para> 
-            <para>特别用于根据时间筛选信息</para>
+            <para>特别用于根据时间筛选符合条件的字符串信息</para>
             <para>Exceptions:</para> 
             <para>System.ArgumentException</para>
             </summary>
