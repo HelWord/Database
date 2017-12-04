@@ -189,6 +189,14 @@ namespace Yangsi
             /// </summary>
             EndWith,
             /// <summary>
+            /// 等于
+            /// </summary>
+            Equal,
+            /// <summary>
+            /// 不等于
+            /// </summary>
+            NotEqual,
+            /// <summary>
             /// 无
             /// </summary>
             None
@@ -794,9 +802,17 @@ namespace Yangsi
                     parameters = "%" + critera + "%";
                     break;
                 case TxtSelectCriteria.StartWith:
-                default:
                     wheres.Add(criteraColumn + " LIKE @paras");
                     parameters = "%" + critera + "";
+                    break;
+                case TxtSelectCriteria.NotEqual:
+                    wheres.Add(criteraColumn + " <> @paras");
+                    parameters = "%" + critera + "";
+                    break;
+                case TxtSelectCriteria.Equal:
+                default:
+                    wheres.Add(criteraColumn + " = @paras");
+                    parameters = "" + critera + "";
                     break;
             }
             if (wheres.Count > 0)
@@ -1344,10 +1360,19 @@ namespace Yangsi
                         parameters = "%" + keyWord + "%";
                         break;
                     case TxtSelectCriteria.StartWith:
-                    default:
                         queryString += "where " + criteriaColumn + " LIKE @paras";
                         parameters = "%" + keyWord + "";
                         break;
+                    case TxtSelectCriteria.NotEqual:
+                        queryString += criteriaColumn + " <> @paras";
+                        parameters = "" + keyWord + "";
+                        break;
+                    case TxtSelectCriteria.Equal:
+                    default:
+                        queryString += criteriaColumn + " = @paras";
+                        parameters = "" + keyWord + "";
+                        break;
+
                 }
                 command.CommandText = queryString;
                 command.Parameters.AddWithValue("@paras", parameters);

@@ -575,6 +575,16 @@
             以结尾
             </summary>
         </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.Equal">
+            <summary>
+            等于
+            </summary>
+        </member>
+        <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.NotEqual">
+            <summary>
+            不等于
+            </summary>
+        </member>
         <member name="F:Yangsi.DatabaseUtility.TxtSelectCriteria.None">
             <summary>
             无
