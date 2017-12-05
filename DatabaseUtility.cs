@@ -26,7 +26,7 @@ namespace Yangsi
         private ulong maxTableSize;
         private SqlConnection sqlCon;
         private bool disposed = false;
-        private static readonly Dictionary<Type, String> supportedTypeDict;
+        private static Dictionary<Type, String> supportedTypeDict;
         #endregion
 
         #region 构造函数
