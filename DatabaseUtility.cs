@@ -115,14 +115,14 @@ namespace Yangsi
             if(disposing)
             { 
                 //释放托管资源
+                if (sqlCon != null && sqlCon.State == ConnectionState.Open)
+                {
+                    sqlCon.Close();
+                }
+                sqlCon.Dispose();
+                sqlCon = null;
             }
             //释放非托管资源
-            if (sqlCon != null && sqlCon.State == ConnectionState.Open)
-            {
-                sqlCon.Close();
-            }
-            sqlCon.Dispose();
-            sqlCon = null;
             disposed = true;
         }
 
